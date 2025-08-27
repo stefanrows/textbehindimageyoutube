@@ -26,13 +26,28 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
 
   useEffect(() => {
     if (canvasRef.current && !fabricCanvasRef.current) {
-      // Initialize Fabric.js canvas
+      // Initialize Fabric.js canvas with high-quality settings
       fabricCanvasRef.current = new Canvas(canvasRef.current, {
         width,
         height,
         backgroundColor: '#f0f0f0',
         preserveObjectStacking: true,
+        enableRetinaScaling: true,
+        imageSmoothingEnabled: true,
+        renderOnAddRemove: true,
+        stateful: true,
+        selection: true,
+        allowTouchScrolling: false,
       });
+
+      // Optimize canvas context for high-quality rendering
+      const ctx = fabricCanvasRef.current.getContext();
+      if (ctx.imageSmoothingEnabled !== undefined) {
+        ctx.imageSmoothingEnabled = true;
+        if (ctx.imageSmoothingQuality) {
+          ctx.imageSmoothingQuality = 'high';
+        }
+      }
 
       // Add click event listener
       if (onCanvasClick) {
@@ -70,6 +85,14 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
           const canvas = fabricCanvasRef.current;
           const canvasWidth = canvas.getWidth();
           const canvasHeight = canvas.getHeight();
+          
+          // Optimize image for high-quality rendering
+          img.set({
+            objectCaching: false, // Disable caching for better quality
+            statefullCache: false,
+            noScaleCache: false,
+            strokeUniform: true,
+          });
           
           if (positionState) {
             // Apply stored position and transformation state
@@ -565,11 +588,14 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
       canvas.requestRenderAll();
     },
 
-    exportAsImage: (format = 'png', quality = 1) => {
+    exportAsImage: (format = 'png', quality = 1, multiplier = 2) => {
       return fabricCanvasRef.current.toDataURL({
         format,
         quality,
-        multiplier: 1,
+        multiplier,
+        enableRetinaScaling: true,
+        withoutTransform: false,
+        withoutShadow: false,
       });
     },
 
@@ -865,26 +891,40 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
       };
     },
 
-    exportAsYouTubeImage: (format = 'png', quality = 1) => {
+    exportAsYouTubeImage: (format = 'png', quality = 1, multiplier = 2) => {
       const canvas = fabricCanvasRef.current;
       
-      // Create a temporary canvas to crop to YouTube dimensions
+      // Calculate optimal multiplier for YouTube dimensions if not specified
+      const youtubeWidth = 1280;
+      const youtubeHeight = 720;
+      const sourceMultiplier = Math.max(youtubeWidth / frameWidth, youtubeHeight / frameHeight);
+      const finalMultiplier = Math.max(multiplier, sourceMultiplier);
+      
+      // Create high-resolution temporary canvas
       const tempCanvas = document.createElement('canvas');
       const tempCtx = tempCanvas.getContext('2d');
       
-      // Set YouTube thumbnail dimensions (1280x720 is optimal)
-      const youtubeWidth = 1280;
-      const youtubeHeight = 720;
+      // Set YouTube thumbnail dimensions
       tempCanvas.width = youtubeWidth;
       tempCanvas.height = youtubeHeight;
       
-      // Get the main canvas as image
-      const mainCanvasData = canvas.toCanvasElement();
+      // Enable high-quality rendering
+      tempCtx.imageSmoothingEnabled = true;
+      tempCtx.imageSmoothingQuality = 'high';
       
-      // Draw the cropped and scaled portion
+      // Get the main canvas as high-resolution image using multiplier
+      const mainCanvasData = canvas.toCanvasElement(finalMultiplier);
+      
+      // Calculate source dimensions with multiplier
+      const scaledFrameLeft = frameLeft * finalMultiplier;
+      const scaledFrameTop = frameTop * finalMultiplier;
+      const scaledFrameWidth = frameWidth * finalMultiplier;
+      const scaledFrameHeight = frameHeight * finalMultiplier;
+      
+      // Draw the cropped and scaled portion with high quality
       tempCtx.drawImage(
         mainCanvasData,
-        frameLeft, frameTop, frameWidth, frameHeight, // Source rectangle (frame area)
+        scaledFrameLeft, scaledFrameTop, scaledFrameWidth, scaledFrameHeight, // Source rectangle (frame area)
         0, 0, youtubeWidth, youtubeHeight // Destination rectangle (full YouTube canvas)
       );
       

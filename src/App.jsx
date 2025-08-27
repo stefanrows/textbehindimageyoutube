@@ -30,7 +30,7 @@ function App() {
   const [layers, setLayers] = useState([]);
   const [selectedLayer, setSelectedLayer] = useState(null); // Currently selected layer
   const [exportFormat, setExportFormat] = useState('png');
-  const [exportQuality, setExportQuality] = useState(1);
+  const [exportQualityPreset, setExportQualityPreset] = useState('high'); // draft, standard, high, ultra
   const [showYouTubeFrame, setShowYouTubeFrame] = useState(true);
   
   const { removeImageBackground, isProcessing, error } = useBackgroundRemoval();
@@ -39,6 +39,17 @@ function App() {
     'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Impact', 
     'Comic Sans MS', 'Trebuchet MS', 'Courier New', 'Verdana'
   ];
+
+  // Quality preset configuration
+  const getQualitySettings = (preset) => {
+    const settings = {
+      draft: { multiplier: 1, quality: 0.8, description: 'Fast preview (1x)' },
+      standard: { multiplier: 1.5, quality: 0.9, description: 'Standard quality (1.5x)' },
+      high: { multiplier: 2, quality: 0.95, description: 'High quality (2x) - Recommended' },
+      ultra: { multiplier: 3, quality: 1, description: 'Ultra quality (3x) - Professional' }
+    };
+    return settings[preset] || settings.high;
+  };
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
@@ -130,7 +141,12 @@ function App() {
 
   const handleExport = () => {
     if (canvasRef.current) {
-      const dataURL = canvasRef.current.exportAsYouTubeImage(exportFormat, exportQuality);
+      const qualitySettings = getQualitySettings(exportQualityPreset);
+      const dataURL = canvasRef.current.exportAsYouTubeImage(
+        exportFormat, 
+        qualitySettings.quality, 
+        qualitySettings.multiplier
+      );
       const link = document.createElement('a');
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
       link.download = `youtube-thumbnail-${timestamp}.${exportFormat}`;
@@ -143,7 +159,12 @@ function App() {
 
   const handleExportFull = () => {
     if (canvasRef.current) {
-      const dataURL = canvasRef.current.exportAsImage(exportFormat, exportQuality);
+      const qualitySettings = getQualitySettings(exportQualityPreset);
+      const dataURL = canvasRef.current.exportAsImage(
+        exportFormat, 
+        qualitySettings.quality, 
+        qualitySettings.multiplier
+      );
       const link = document.createElement('a');
       const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
       link.download = `full-canvas-${timestamp}.${exportFormat}`;
@@ -828,16 +849,35 @@ function App() {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Quality</label>
-                    <Input
-                      type="range"
-                      min="0.1"
-                      max="1"
-                      step="0.1"
-                      value={exportQuality}
-                      onChange={(e) => setExportQuality(Number(e.target.value))}
-                    />
-                    <span className="text-xs text-muted-foreground">{Math.round(exportQuality * 100)}%</span>
+                    <label className="text-sm font-medium">Quality Preset</label>
+                    <Select
+                      value={exportQualityPreset}
+                      onChange={(e) => setExportQualityPreset(e.target.value)}
+                    >
+                      <option value="draft">Draft (1x) - Fast</option>
+                      <option value="standard">Standard (1.5x)</option>
+                      <option value="high">High (2x) - Recommended</option>
+                      <option value="ultra">Ultra (3x) - Professional</option>
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Quality Information */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="text-sm">
+                    <div className="font-medium text-blue-900 mb-1">
+                      {getQualitySettings(exportQualityPreset).description}
+                    </div>
+                    <div className="text-blue-700 text-xs">
+                      Resolution: {getQualitySettings(exportQualityPreset).multiplier}× rendering • 
+                      Quality: {Math.round(getQualitySettings(exportQualityPreset).quality * 100)}%
+                      {exportQualityPreset === 'high' && (
+                        <div className="mt-1 font-medium">✨ Best for YouTube thumbnails</div>
+                      )}
+                      {exportQualityPreset === 'ultra' && (
+                        <div className="mt-1 font-medium">🎯 Professional print quality</div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -845,10 +885,13 @@ function App() {
                   <Button onClick={handleExport} className="w-full" disabled={!uploadedImage}>
                     <Download className="w-4 h-4 mr-2" />
                     Export YouTube Thumbnail (1280×720)
+                    <span className="ml-1 text-xs opacity-75">
+                      @ {getQualitySettings(exportQualityPreset).multiplier}×
+                    </span>
                   </Button>
                   <Button onClick={handleExportFull} variant="outline" className="w-full" disabled={!uploadedImage}>
                     <Download className="w-4 h-4 mr-2" />
-                    Export Full Canvas ({960}×{540})
+                    Export Full Canvas ({Math.round(960 * getQualitySettings(exportQualityPreset).multiplier)}×{Math.round(540 * getQualitySettings(exportQualityPreset).multiplier)})
                   </Button>
                 </div>
                 
