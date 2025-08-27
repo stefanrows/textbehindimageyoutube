@@ -2,8 +2,6 @@
 
 A powerful web application for creating stunning YouTube thumbnails with text-behind-image effects. Upload any image, automatically remove the background, and place text behind your subject for professional-looking thumbnails.
 
-![Text Behind Image Effect Example](./docs/example-thumbnail.jpg)
-
 ## ✨ Features
 
 - 🖼️ **Smart Background Removal**: Automatically remove backgrounds from uploaded images
@@ -254,7 +252,28 @@ textbehindimageyoutube/
 
 This project is private and proprietary.
 
-## 🤝 Support
+## 🔗 Connect & Support
+
+If you find this project helpful and want to follow my work or support this free project, I'd really appreciate it — thank you!
+
+Follow / Learn:
+
+- 🔔 YouTube (subscribe & hit the bell to code along live): https://youtube.com/@stefanrows?sub_confirmation=1
+- 💻 Courses: https://stefanrows.com/
+- 📝 Written Tutorials: https://ceos3c.com/
+- 🔗 All important links / Linktree: https://linktree.stefanrows.com
+
+Join the community:
+
+- 💬 Discord: https://discord.gg/qPdTvJd
+- 🐦 Twitter / X: https://x.com/ceos3c
+- 📧 Newsletter: https://ceos3c.com/go/newsletter
+
+Support the project (optional):
+
+- ☕ Patreon: https://patreon.com/stefanrows
+- ☕ Buy Me a Coffee: https://buymeacoffee.com/stefanrows
+- 💳 PayPal: https://paypal.me/ceos3c
 
 If you encounter any issues:
 1. Check the troubleshooting section above
