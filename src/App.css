@@ -1,0 +1,96 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Canvas Container Styles for Aspect Ratio Preservation */
+.canvas-container {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background-color: #f0f0f0;
+}
+
+.canvas-wrapper canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+/* Responsive behavior */
+@media (max-width: 640px) {
+  .canvas-container {
+    max-width: 100%;
+    padding: 0 0.5rem;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .canvas-container {
+    max-width: 800px;
+  }
+}
+
+@media (min-width: 1025px) {
+  .canvas-container {
+    max-width: 960px;
+  }
+}
+
+/* YouTube Frame Overlay Styles */
+.youtube-frame-overlay {
+  position: absolute;
+  pointer-events: none;
+  border: 2px dashed #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+}

@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm exec tailwindcss init:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm run lint:*)",
+      "Bash(pnpm run:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)",
+      "WebFetch(domain:fabricjs.com)",
+      "WebFetch(domain:fabricjs.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:medium.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
