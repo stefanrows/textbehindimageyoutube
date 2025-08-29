@@ -33,6 +33,7 @@ function App() {
   const [exportQualityPreset, setExportQualityPreset] = useState('high'); // draft, standard, high, ultra
   const [showYouTubeFrame, setShowYouTubeFrame] = useState(true);
   const [processingState, setProcessingState] = useState('idle'); // 'idle', 'uploading', 'processing', 'completed', 'error'
+  const [textAddedNotification, setTextAddedNotification] = useState(null); // For showing text addition feedback
   
   const { removeImageBackground, isProcessing, error } = useBackgroundRemoval();
 
@@ -163,6 +164,18 @@ function App() {
         opacity: textOpacity,
       });
     }
+    
+    // Show text addition feedback
+    setTextAddedNotification({
+      type: processedImage ? 'behind-subject' : 'regular',
+      text: textInput,
+      timestamp: Date.now()
+    });
+    
+    // Clear notification after 4 seconds
+    setTimeout(() => {
+      setTextAddedNotification(null);
+    }, 4000);
     
     // Update layers and save to history after adding text
     setTimeout(() => {
@@ -363,6 +376,40 @@ function App() {
             )}
           </div>
         </div>
+
+        {/* Text Addition Notification */}
+        {textAddedNotification && (
+          <div className="mb-6">
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex-shrink-0 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-green-800">
+                      ✨ Text "{textAddedNotification.text}" Added Successfully!
+                    </p>
+                    <p className="text-xs text-green-700 mt-1">
+                      {textAddedNotification.type === 'behind-subject' 
+                        ? 'Text positioned behind subject with smart placement algorithm. The text is automatically selected and glowing for visibility.'
+                        : 'Text added to canvas and automatically selected for easy positioning.'
+                      }
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                  <strong>💡 Tip:</strong> {textAddedNotification.type === 'behind-subject' 
+                    ? 'If text appears hidden, look for the golden glow effect or selection handles. You can drag it to any position!'
+                    : 'Your text is now selected (see the selection handles). Drag it to reposition or use the controls to modify styling.'
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Layers Panel - Positioned directly under Canvas for easy access */}
         {layers.length > 0 && (
@@ -858,6 +905,20 @@ function App() {
                     <span className="text-xs text-muted-foreground">{strokeWidth}px</span>
                   </div>
                 </div>
+
+                {processedImage && (
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-sm font-medium text-yellow-800">Smart Text Positioning Active</span>
+                    </div>
+                    <p className="text-xs text-yellow-700">
+                      Text will be automatically positioned in a clear area to avoid overlapping with the subject. The text will glow briefly and be auto-selected for easy visibility.
+                    </p>
+                  </div>
+                )}
 
                 <Button onClick={handleAddText} className="w-full">
                   {processedImage ? 'Add Text Behind Subject' : 'Add Text to Canvas'}

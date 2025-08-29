@@ -94,3 +94,35 @@
   border: 2px dashed #ef4444;
   background-color: rgba(239, 68, 68, 0.05);
 }
+
+/* Text Visibility Indicators */
+.fabric-text-newly-added {
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 12px rgba(255, 215, 0, 0.6));
+  animation: fadeInGlow 2s ease-out forwards;
+}
+
+.fabric-text-hidden-indicator {
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.6)) drop-shadow(0 0 8px rgba(59, 130, 246, 0.4));
+}
+
+.fabric-text-pulse {
+  animation: textPulse 1.5s ease-in-out 3;
+}
+
+@keyframes fadeInGlow {
+  0% {
+    filter: drop-shadow(0 0 12px rgba(255, 215, 0, 1)) drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));
+  }
+  100% {
+    filter: none;
+  }
+}
+
+@keyframes textPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.9)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.6));
+  }
+}

@@ -1,13 +1,16 @@
 # Text Behind Image Creator
 
-A powerful web application for creating stunning YouTube thumbnails with text-behind-image effects. Upload any image, automatically remove the background, and place text behind your subject for professional-looking thumbnails.
+A powerful web application for creating stunning YouTube thumbnails with text-behind-image effects. Simply upload any image and the background is automatically removed, then intelligently place text behind your subject for professional-looking thumbnails.
 
 ## ✨ Features
 
 - 🖼️ **Smart Background Removal**: Automatically remove backgrounds from uploaded images
 - 📝 **Text Behind Subject**: Create professional text-behind-image effects
+- 🎯 **Smart Text Positioning**: Intelligent algorithm automatically positions text to avoid subject overlap
+- ✨ **Text Visibility System**: Golden glow effects and auto-selection ensure text is never lost behind subjects
 - 🎨 **Rich Text Editing**: Customize fonts, colors, sizes, outlines, and opacity
 - 📱 **Intuitive Interface**: Drag-and-drop positioning with click-to-place mode
+- 💬 **Enhanced UI Feedback**: Context-aware notifications, tips, and positioning guidance
 - 🎬 **YouTube Optimized**: Export in perfect YouTube thumbnail dimensions (1280×720)
 - 📐 **Layer Management**: Visual layer system with smart interaction controls
 - ↩️ **Undo/Redo Support**: Full history with keyboard shortcuts (Ctrl+Z/Ctrl+Y)
@@ -114,15 +117,14 @@ Open your web browser and go to `http://localhost:5173/`
 1. Click on the "Upload Image" section
 2. Click "Choose file" and select your image (JPG, PNG, or GIF)
 3. Your image will appear on the canvas
+4. **Automatic Background Removal**: The app will automatically start removing the background from your image
+   - You'll see a processing indicator while the AI works
+   - This usually takes a few seconds depending on image complexity
+   - Once complete, you'll see a preview showing:
+     - **Original Image**: Used as the background layer
+     - **Subject**: Your subject with transparent background (top layer)
 
-### Step 3: Remove Background (Optional but Recommended)
-1. After uploading an image, click the "Remove Background" button
-2. Wait for the AI to process your image (this may take a few seconds)
-3. Once complete, you'll see a preview showing:
-   - **Original Image**: Used as the background layer
-   - **Subject**: Your subject with transparent background (top layer)
-
-### Step 4: Add Your Text
+### Step 3: Add Your Text
 1. In the "Text Settings" section, enter your desired text
 2. Customize your text:
    - **Font**: Choose from 9 available fonts
@@ -134,7 +136,14 @@ Open your web browser and go to `http://localhost:5173/`
 
 3. Click "Add Text Behind Subject" (if background was removed) or "Add Text to Canvas"
 
-### Step 5: Fine-tune Your Design
+**✨ Smart Text Positioning**: When adding text behind a subject, the app automatically:
+- Analyzes the subject's position and size
+- Places text in the optimal location to avoid overlap
+- Shows a golden glow effect for 3 seconds to make the text visible
+- Automatically selects the text so you can see its position
+- Displays helpful notifications with positioning tips
+
+### Step 4: Fine-tune Your Design
 - **Drag Elements**: Click and drag text or images to reposition them
 - **Layer Management**: Use the Layers panel to:
   - Select different elements
@@ -142,7 +151,7 @@ Open your web browser and go to `http://localhost:5173/`
   - Delete unwanted elements
 - **Undo/Redo**: Use Ctrl+Z/Ctrl+Y or the undo/redo buttons
 
-### Step 6: Export Your Thumbnail
+### Step 5: Export Your Thumbnail
 1. In the "Export & Actions" section:
    - Choose your format (PNG recommended for thumbnails)
    - Adjust quality if needed (100% recommended)
@@ -167,6 +176,15 @@ The application uses an intelligent layer system:
 - **Click to Place**: Click anywhere on the canvas to position text
 - **Drag and Drop**: Click and drag text elements directly
 - **Auto-Scale**: Automatically adjusts text size based on subject size
+- **Smart Positioning**: Automatically places text in optimal locations to avoid subject overlap
+
+### Text Visibility System
+The application includes advanced features to ensure text is never lost behind subjects:
+- **Golden Glow Effect**: Newly added text glows for 3 seconds to show its location
+- **Auto-Selection**: Text is automatically selected after being added, showing selection handles
+- **Smart Placement Algorithm**: Analyzes subject bounds and positions text in clear areas
+- **Visual Feedback**: Success notifications and positioning tips guide the user
+- **Fallback Safety**: Multiple positioning strategies ensure text is always discoverable
 
 ### Export Options
 - **YouTube Thumbnail**: Perfect 1280×720 dimensions for YouTube
@@ -184,14 +202,18 @@ The application uses an intelligent layer system:
 - Check if port 5173 is available (close other development servers)
 
 **Background removal not working:**
-- Make sure you have a stable internet connection
-- Try with a different image (clear subject works best)
+- Make sure you have a stable internet connection (background removal happens automatically after upload)
+- Try with a different image (clear subjects with good contrast work best)
 - Supported formats: JPG, PNG, GIF
+- **Note**: Background removal starts automatically after image upload - no manual action needed
 
 **Text not appearing:**
 - Make sure text content is not empty
 - Check if text color matches background (try white text with black outline)
 - Verify text opacity is above 0%
+- **New**: Look for the golden glow effect when text is first added - this indicates text is present but may be behind the subject
+- **New**: Check if text is auto-selected (you'll see selection handles around it)
+- **New**: Use the Layers panel to select and locate text objects
 
 **Export not working:**
 - Make sure you have uploaded an image first
