@@ -43,15 +43,31 @@ The project follows a standard Vite + React structure:
 
 - **Automatic Background Removal**: AI-powered subject extraction from uploaded images
 - **Text Behind Subject Effect**: Advanced layering system that places text behind the main subject
+- **Smart Text Positioning**: Intelligent algorithm that automatically positions text to avoid subject overlap
+- **Text Visibility System**: Golden glow effects, auto-selection, and visual indicators ensure text is never lost
 - **Real-time Canvas Manipulation**: Interactive drag-and-drop with Fabric.js
 - **Smart Layer Management**: Unified background+subject groups with independent text layers
+- **Enhanced UI Feedback**: Context-aware notifications, tips, and positioning guidance
 - **Export Options**: Multiple formats (PNG/JPEG/WebP) with quality presets for YouTube thumbnails
 - **Undo/Redo System**: Full canvas state history with keyboard shortcuts
-- **Responsive UI**: Clean, modern interface with status feedback
+- **Responsive UI**: Clean, modern interface with comprehensive status feedback
 
 ## Recent Updates
 
-### Loading Spinner Fix (Latest)
+### Text Visibility Improvements (Latest)
+- **Smart Text Positioning**: Automatically calculates optimal text placement to avoid subject overlap using weighted safe zones
+- **Visual Indicators**: Newly added text gets a golden glow effect for 3 seconds using Fabric.js Shadow system
+- **Auto-Selection**: Text is automatically selected after being added, showing selection handles for immediate visibility
+- **Enhanced UI Feedback**: Success notifications, context-aware tips, and smart positioning warnings
+- **Better UX**: Clear instructions on text interaction modes and repositioning options
+
+### Text Behind Subject System
+- Advanced algorithm analyzes subject bounds and positions text in clear areas (top, bottom corners, sides)
+- Uses distance-based scoring with zone weighting (top area preferred, fallback to bottom/sides)
+- Graceful fallback to default positioning if bounds calculation fails
+- Preserves all existing functionality while adding smart positioning
+
+### Loading Spinner Fix
 - Fixed spinner animation that was stopping prematurely during background removal
 - Integrated `isProcessing` state from `useBackgroundRemoval` hook with UI state
 - Removed arbitrary timeouts that caused premature completion indicators
@@ -60,7 +76,8 @@ The project follows a standard Vite + React structure:
 ### State Management
 - `processingState`: Tracks overall upload and processing flow ('idle' → 'uploading' → 'processing' → 'completed')
 - `isProcessing`: From background removal hook, tracks actual AI processing
-- Combined states ensure accurate loading feedback
+- `textAddedNotification`: Manages text addition feedback and user guidance
+- Combined states ensure accurate loading feedback and text visibility
 
 ## ESLint Configuration
 

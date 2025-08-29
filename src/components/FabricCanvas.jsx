@@ -177,9 +177,19 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
       }
 
       fabricCanvasRef.current.add(textObj);
+      
+      // Auto-select newly added text for immediate visibility
+      setTimeout(() => {
+        if (fabricCanvasRef.current && textObj) {
+          fabricCanvasRef.current.setActiveObject(textObj);
+          fabricCanvasRef.current.requestRenderAll();
+        }
+      }, 100);
+      
       fabricCanvasRef.current.requestRenderAll();
       return textObj;
     },
+
 
     addTextBehindSubject: async (text, backgroundImageUrl, subjectImageUrl, options = {}) => {
       try {
@@ -287,8 +297,58 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
         canvas.add(imageGroup);
 
         // 3. Calculate optimal text position to avoid overlapping the subject area
-        let textLeft = options.left !== undefined ? options.left : canvas.getWidth() / 2;
-        let textTop = options.top !== undefined ? options.top : canvas.getHeight() * 0.75;
+        let textLeft, textTop;
+        
+        if (options.left !== undefined && options.top !== undefined) {
+          // User specified position - use it
+          textLeft = options.left;
+          textTop = options.top;
+        } else {
+          // Calculate smart positioning to avoid subject overlap
+          const smartPosition = {
+            left: canvas.getWidth() / 2,
+            top: canvas.getHeight() * 0.15
+          };
+          
+          // Get subject image bounds for smarter positioning
+          try {
+            const groupBounds = imageGroup.getBoundingRect();
+            const subjectCenterX = groupBounds.left + groupBounds.width / 2;
+            const subjectCenterY = groupBounds.top + groupBounds.height / 2;
+            
+            // Define safe zones (areas less likely to overlap with subject)
+            const safeZones = [
+              { x: canvas.getWidth() * 0.5, y: canvas.getHeight() * 0.15, weight: 0.9 },
+              { x: canvas.getWidth() * 0.25, y: canvas.getHeight() * 0.85, weight: 0.8 },
+              { x: canvas.getWidth() * 0.75, y: canvas.getHeight() * 0.85, weight: 0.8 },
+              { x: canvas.getWidth() * 0.15, y: canvas.getHeight() * 0.5, weight: 0.7 },
+              { x: canvas.getWidth() * 0.85, y: canvas.getHeight() * 0.5, weight: 0.7 }
+            ];
+            
+            let bestPosition = safeZones[0];
+            let maxDistance = 0;
+            
+            for (const zone of safeZones) {
+              const distance = Math.sqrt(
+                Math.pow(zone.x - subjectCenterX, 2) + 
+                Math.pow(zone.y - subjectCenterY, 2)
+              );
+              const weightedDistance = distance * zone.weight;
+              
+              if (weightedDistance > maxDistance) {
+                maxDistance = weightedDistance;
+                bestPosition = zone;
+              }
+            }
+            
+            smartPosition.left = bestPosition.x;
+            smartPosition.top = bestPosition.y;
+          } catch {
+            // Fallback to default positioning if bounds calculation fails
+          }
+          textLeft = smartPosition.left;
+          textTop = smartPosition.top;
+        }
         
         // 4. Create text layer with enhanced v6 Group compatibility (independent object)
         const textOptions = {
@@ -360,6 +420,27 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
 
         // 5. Add text as independent layer
         canvas.add(textObj);
+        
+        // 5a. Add visual indicator by temporarily highlighting the text
+        textObj._isNewlyAdded = true;
+        
+        // Add a subtle temporary glow using Fabric.js shadow
+        const originalShadow = textObj.shadow;
+        textObj.set('shadow', new Shadow({
+          color: 'rgba(255, 215, 0, 0.8)',
+          blur: 15,
+          offsetX: 0,
+          offsetY: 0,
+        }));
+        
+        // Remove the temporary glow effect after 3 seconds
+        setTimeout(() => {
+          if (textObj && textObj._isNewlyAdded) {
+            textObj.set('shadow', originalShadow);
+            textObj._isNewlyAdded = false;
+            canvas.requestRenderAll();
+          }
+        }, 3000);
         
         // 6. Create a separate subject overlay for text-behind effect
         // Clone the subject image and position it to match the imageGroup
@@ -546,6 +627,14 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
           canvas._textBehindCleanup = [];
         }
         canvas._textBehindCleanup.push(imageGroup._cleanup);
+        
+        // Auto-select the newly added text for immediate visibility and user interaction
+        setTimeout(() => {
+          if (canvas && textObj) {
+            canvas.setActiveObject(textObj);
+            canvas.requestRenderAll();
+          }
+        }, 100);
         
         canvas.requestRenderAll();
         return { textObj, imageGroup, subjectOverlay, backgroundImg, subjectImg };
