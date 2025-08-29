@@ -3,7 +3,7 @@ import FabricCanvas from './components/FabricCanvas'
 import { Button } from './components/ui/button'
 import { Input } from './components/ui/input'
 import { Select } from './components/ui/select'
-import { Upload, Type, Download, Trash2, Scissors, Loader2, Layers, ChevronUp, ChevronDown, X, Undo2, Redo2 } from 'lucide-react'
+import { Upload, Type, Download, Trash2, Loader2, Layers, ChevronUp, ChevronDown, X, Undo2, Redo2 } from 'lucide-react'
 import { useBackgroundRemoval } from './hooks/useBackgroundRemoval'
 import './App.css'
 
@@ -32,6 +32,7 @@ function App() {
   const [exportFormat, setExportFormat] = useState('png');
   const [exportQualityPreset, setExportQualityPreset] = useState('high'); // draft, standard, high, ultra
   const [showYouTubeFrame, setShowYouTubeFrame] = useState(true);
+  const [processingState, setProcessingState] = useState('idle'); // 'idle', 'uploading', 'processing', 'completed', 'error'
   
   const { removeImageBackground, isProcessing, error } = useBackgroundRemoval();
 
@@ -51,37 +52,73 @@ function App() {
     return settings[preset] || settings.high;
   };
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
-      setUploadedImage(url);
-      setOriginalFile(file);
-      setProcessedImage(null);
+  const handleImageUpload = async (event) => {
+    try {
+      const file = event.target.files[0];
       
-      if (canvasRef.current) {
-        canvasRef.current.addImage(url);
-        // Save initial state after image upload
-        setTimeout(saveToHistory, 100);
+      if (file && file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file);
+        
+        setUploadedImage(url);
+        setOriginalFile(file);
+        setProcessedImage(null);
+        setProcessingState('uploading');
+        
+        if (canvasRef.current) {
+          try {
+            canvasRef.current.addImage(url);
+            setTimeout(saveToHistory, 100);
+          } catch (canvasError) {
+            console.error('Canvas error:', canvasError);
+          }
+        }
+
+        // Automatically start background removal after image upload
+        setTimeout(async () => {
+          setProcessingState('processing');
+          try {
+            await handleRemoveBackground(file);
+            setProcessingState('completed');
+          } catch (error) {
+            console.error('Auto background removal failed:', error);
+            setProcessingState('error');
+          }
+        }, 300);
+      } else {
+        setProcessingState('error');
       }
+    } catch (error) {
+      console.error('Critical error in handleImageUpload:', error);
+      setProcessingState('error');
     }
   };
 
-  const handleRemoveBackground = async () => {
-    if (!originalFile) return;
+  const handleRemoveBackground = async (fileToProcess) => {
+    const file = fileToProcess || originalFile;
+    if (!file) {
+      console.error('No file found for background removal');
+      return;
+    }
     
     try {
-      const processedUrl = await removeImageBackground(originalFile);
+      const processedUrl = await removeImageBackground(file);
       setProcessedImage(processedUrl);
       
-      // Replace the image on canvas with the processed version, preserving position
-      if (canvasRef.current) {
-        await canvasRef.current.replaceImageWithState(processedUrl, true);
-        // Save state after background removal
-        setTimeout(saveToHistory, 100);
+      // Create the complete layered effect (background + subject) instead of showing only processed image
+      if (canvasRef.current && uploadedImage) {
+        await canvasRef.current.addTextBehindSubject(
+          '', // Empty text - just create the background + subject layers
+          uploadedImage, // Original image as background
+          processedUrl, // Subject with transparent background
+          {} // No text options since we're not adding text yet
+        );
+        // Properly wait for state saving to complete
+        await new Promise(resolve => setTimeout(resolve, 150));
+        saveToHistory();
       }
-    } catch {
-      // Failed to remove background
+    } catch (error) {
+      console.error('Failed to remove background:', error);
+      throw error; // Re-throw to be handled by caller
     }
   };
 
@@ -540,26 +577,70 @@ function App() {
               <p className="text-sm text-muted-foreground">
                 Upload an image to get started. Supported formats: JPG, PNG, GIF
               </p>
-              {uploadedImage && !processedImage && (
-                <Button 
-                  onClick={handleRemoveBackground} 
-                  disabled={isProcessing}
-                  className="w-full mt-4"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Removing Background...
-                    </>
-                  ) : (
-                    <>
-                      <Scissors className="w-4 h-4 mr-2" />
-                      Remove Background
-                    </>
-                  )}
-                </Button>
+              
+              
+              {/* Immediate upload feedback */}
+              {uploadedImage && processingState === 'uploading' && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 bg-green-500 rounded-full flex-shrink-0 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-green-800">
+                        Image uploaded successfully!
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">
+                        Preparing background removal...
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
-              {processedImage && (
+              
+              {/* Processing feedback */}
+              {(processingState === 'processing' || isProcessing) && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                      <Loader2
+                        className="w-5 h-5 text-blue-600 animate-spin origin-center flex-shrink-0"
+                        style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+                      />
+                    <div>
+                      <p className="text-sm font-semibold text-blue-800">
+                        Processing your image...
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Automatically removing background for text-behind effect
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Error feedback */}
+              {processingState === 'error' && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 bg-red-500 rounded-full flex-shrink-0 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-red-800">
+                        Background removal failed
+                      </p>
+                      <p className="text-xs text-red-600 mt-1">
+                        You can still add text normally to your image
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {(processedImage || processingState === 'completed') && (
                 <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="flex items-center justify-center w-6 h-6 bg-green-500 rounded-full">
@@ -568,11 +649,11 @@ function App() {
                       </svg>
                     </div>
                     <p className="text-sm text-green-800 font-semibold">
-                      Text-Behind-Subject Mode Ready!
+                      ✨ Processing Complete - Ready for Text!
                     </p>
                   </div>
                   <p className="text-xs text-gray-700 mb-3">
-                    Background removed successfully. The "Add Text to Canvas" button will now create a 3-layer effect:
+                    Background automatically removed! You can now add text to create the text-behind-subject effect:
                   </p>
                   <div className="flex items-center gap-2 mb-3 text-xs">
                     <span className="px-2 py-1 bg-green-100 text-green-700 rounded">1. Background</span>
