@@ -3,7 +3,7 @@ import FabricCanvas from './components/FabricCanvas'
 import { Button } from './components/ui/button'
 import { Input } from './components/ui/input'
 import { Select } from './components/ui/select'
-import { Upload, Type, Download, Trash2, Loader2, Layers, ChevronUp, ChevronDown, X, Undo2, Redo2 } from 'lucide-react'
+import { Upload, Type, Download, Trash2, Layers, ChevronUp, ChevronDown, X, Undo2, Redo2 } from 'lucide-react'
 import { useBackgroundRemoval } from './hooks/useBackgroundRemoval'
 import './App.css'
 
@@ -29,6 +29,9 @@ function App() {
   const [historyIndex, setHistoryIndex] = useState(-1); // Current position in history
   const [layers, setLayers] = useState([]);
   const [selectedLayer, setSelectedLayer] = useState(null); // Currently selected layer
+  const [selectedTextObject, setSelectedTextObject] = useState(null); // Currently selected text for editing
+  const [editingTextContent, setEditingTextContent] = useState(''); // Text content being edited
+  const [editingTextProps, setEditingTextProps] = useState(null); // Properties of selected text
   const [exportFormat, setExportFormat] = useState('png');
   const [exportQualityPreset, setExportQualityPreset] = useState('high'); // draft, standard, high, ultra
   const [showYouTubeFrame, setShowYouTubeFrame] = useState(true);
@@ -38,9 +41,62 @@ function App() {
   const { removeImageBackground, isProcessing, error } = useBackgroundRemoval();
 
   const fontOptions = [
-    'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Impact', 
+    'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Impact',
     'Comic Sans MS', 'Trebuchet MS', 'Courier New', 'Verdana'
   ];
+
+  // Setup canvas selection event listeners
+  const setupCanvasListeners = useCallback((canvas) => {
+    if (!canvas) return;
+
+    const handleSelectionCreated = (e) => {
+      const activeObject = e.selected?.[0] || e.target;
+      if (activeObject && activeObject.type === 'textbox') {
+        setSelectedTextObject(activeObject);
+        setEditingTextContent(activeObject.text || '');
+        setEditingTextProps({
+          fontFamily: activeObject.fontFamily,
+          fontWeight: activeObject.fontWeight,
+          fontSize: activeObject.fontSize,
+          fill: activeObject.fill,
+          stroke: activeObject.stroke,
+          strokeWidth: activeObject.strokeWidth,
+          opacity: activeObject.opacity,
+        });
+      }
+    };
+
+    const handleSelectionUpdated = (e) => {
+      const activeObject = e.selected?.[0] || e.target;
+      if (activeObject && activeObject.type === 'textbox') {
+        setSelectedTextObject(activeObject);
+        setEditingTextContent(activeObject.text || '');
+        setEditingTextProps({
+          fontFamily: activeObject.fontFamily,
+          fontWeight: activeObject.fontWeight,
+          fontSize: activeObject.fontSize,
+          fill: activeObject.fill,
+          stroke: activeObject.stroke,
+          strokeWidth: activeObject.strokeWidth,
+          opacity: activeObject.opacity,
+        });
+      } else {
+        setSelectedTextObject(null);
+        setEditingTextContent('');
+        setEditingTextProps(null);
+      }
+    };
+
+    const handleSelectionCleared = () => {
+      setSelectedTextObject(null);
+      setEditingTextContent('');
+      setEditingTextProps(null);
+    };
+
+    canvas.on('selection:created', handleSelectionCreated);
+    canvas.on('selection:updated', handleSelectionUpdated);
+    canvas.on('selection:cleared', handleSelectionCleared);
+  }, []);
 
   // Quality preset configuration
   const getQualitySettings = (preset) => {
@@ -285,6 +341,50 @@ function App() {
     }
   };
 
+  // Update selected text object properties
+  const handleUpdateSelectedText = (property, value) => {
+    if (!selectedTextObject || !canvasRef.current) return;
+
+    const updates = { [property]: value };
+    canvasRef.current.updateTextObject(selectedTextObject, updates);
+
+    // Update local state to reflect changes
+    if (property === 'text') {
+      setEditingTextContent(value);
+    } else {
+      setEditingTextProps(prev => ({ ...prev, [property]: value }));
+    }
+
+    // Update layers display
+    setTimeout(updateLayers, 50);
+
+    // Save to history for undo/redo (defined later in the file)
+    setTimeout(() => {
+      if (canvasRef.current) {
+        const currentState = canvasRef.current.saveCanvasState();
+        setCanvasHistory(prev => {
+          const newHistory = prev.slice(0, historyIndex + 1);
+          newHistory.push(currentState);
+          if (newHistory.length > 20) {
+            newHistory.shift();
+          }
+          return newHistory;
+        });
+        setHistoryIndex(prev => Math.min(prev + 1, 19));
+      }
+    }, 100);
+  };
+
+  // Clear text selection
+  const handleClearTextSelection = useCallback(() => {
+    if (canvasRef.current) {
+      canvasRef.current.clearSelection();
+    }
+    setSelectedTextObject(null);
+    setEditingTextContent('');
+    setEditingTextProps(null);
+  }, []);
+
   const handleCanvasClick = useCallback((x, y) => {
     if (clickToPlaceMode) {
       setTextX(Math.round(x));
@@ -333,9 +433,17 @@ function App() {
     }
   }, [canvasHistory, historyIndex]);
 
-  // Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts for undo/redo and ESC to deselect text
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // ESC key to deselect text
+      if (event.key === 'Escape' && selectedTextObject) {
+        event.preventDefault();
+        handleClearTextSelection();
+        return;
+      }
+
+      // Undo/Redo shortcuts
       if (event.ctrlKey || event.metaKey) {
         if (event.key === 'z' && !event.shiftKey) {
           event.preventDefault();
@@ -349,7 +457,15 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo]);
+  }, [handleUndo, handleRedo, selectedTextObject, handleClearTextSelection]);
+
+  // Disable canvas interaction during processing
+  useEffect(() => {
+    if (canvasRef.current && canvasRef.current.setCanvasInteractive) {
+      const isCurrentlyProcessing = processingState === 'processing' || isProcessing;
+      canvasRef.current.setCanvasInteractive(!isCurrentlyProcessing);
+    }
+  }, [processingState, isProcessing]);
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -365,8 +481,10 @@ function App() {
                 ref={canvasRef}
                 width={960}
                 height={540}
+                onCanvasReady={setupCanvasListeners}
                 onCanvasClick={handleCanvasClick}
                 showYouTubeFrame={showYouTubeFrame}
+                isProcessing={processingState === 'processing' || isProcessing}
               />
             </div>
             {!uploadedImage && (
@@ -393,7 +511,7 @@ function App() {
                       ✨ Text "{textAddedNotification.text}" Added Successfully!
                     </p>
                     <p className="text-xs text-green-700 mt-1">
-                      {textAddedNotification.type === 'behind-subject' 
+                      {textAddedNotification.type === 'behind-subject'
                         ? 'Text positioned behind subject with smart placement algorithm. The text is automatically selected and glowing for visibility.'
                         : 'Text added to canvas and automatically selected for easy positioning.'
                       }
@@ -401,11 +519,183 @@ function App() {
                   </div>
                 </div>
                 <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-                  <strong>💡 Tip:</strong> {textAddedNotification.type === 'behind-subject' 
+                  <strong>💡 Tip:</strong> {textAddedNotification.type === 'behind-subject'
                     ? 'If text appears hidden, look for the golden glow effect or selection handles. You can drag it to any position!'
                     : 'Your text is now selected (see the selection handles). Drag it to reposition or use the controls to modify styling.'
                   }
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Text Editor Panel - Appears when text is selected */}
+        {selectedTextObject && editingTextProps && (
+          <div className="mb-6">
+            <div className="border-4 border-green-500 rounded-lg p-6 bg-gradient-to-r from-green-50 to-emerald-50 shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <Type className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-green-900 flex items-center gap-2">
+                      Editing Text
+                      <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded font-medium">
+                        LIVE EDIT MODE
+                      </span>
+                    </h2>
+                    <p className="text-sm text-green-700">
+                      "{editingTextContent.substring(0, 30)}{editingTextContent.length > 30 ? '...' : ''}"
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleClearTextSelection}
+                  className="text-xs"
+                  title="Deselect text (ESC)"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Done Editing
+                </Button>
+              </div>
+
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Text Content */}
+                <div className="lg:col-span-3">
+                  <label className="text-sm font-semibold text-green-900 mb-2 block">Text Content</label>
+                  <Input
+                    value={editingTextContent}
+                    onChange={(e) => handleUpdateSelectedText('text', e.target.value)}
+                    placeholder="Enter your text"
+                    className="bg-white border-2 border-green-300 focus:border-green-500"
+                  />
+                </div>
+
+                {/* Font Family & Weight */}
+                <div>
+                  <label className="text-sm font-semibold text-green-900 mb-2 block">Font Family</label>
+                  <Select
+                    value={editingTextProps.fontFamily}
+                    onChange={(e) => handleUpdateSelectedText('fontFamily', e.target.value)}
+                    className="bg-white border-2 border-green-300"
+                  >
+                    {fontOptions.map(font => (
+                      <option key={font} value={font}>{font}</option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-green-900 mb-2 block">Font Weight</label>
+                  <Select
+                    value={editingTextProps.fontWeight}
+                    onChange={(e) => handleUpdateSelectedText('fontWeight', e.target.value)}
+                    className="bg-white border-2 border-green-300"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="bold">Bold</option>
+                    <option value="lighter">Light</option>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-green-900 mb-2 block">Font Size</label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="range"
+                      min="20"
+                      max="120"
+                      value={editingTextProps.fontSize}
+                      onChange={(e) => handleUpdateSelectedText('fontSize', Number(e.target.value))}
+                      className="flex-1 bg-white"
+                    />
+                    <span className="text-sm font-semibold text-green-900 w-12 text-right">
+                      {Math.round(editingTextProps.fontSize)}px
+                    </span>
+                  </div>
+                </div>
+
+                {/* Colors */}
+                <div>
+                  <label className="text-sm font-semibold text-green-900 mb-2 block">Text Color</label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="color"
+                      value={editingTextProps.fill}
+                      onChange={(e) => handleUpdateSelectedText('fill', e.target.value)}
+                      className="h-10 w-16 bg-white border-2 border-green-300"
+                    />
+                    <Input
+                      type="text"
+                      value={editingTextProps.fill}
+                      onChange={(e) => handleUpdateSelectedText('fill', e.target.value)}
+                      className="flex-1 bg-white border-2 border-green-300 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-green-900 mb-2 block">Outline Color</label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="color"
+                      value={editingTextProps.stroke}
+                      onChange={(e) => handleUpdateSelectedText('stroke', e.target.value)}
+                      className="h-10 w-16 bg-white border-2 border-green-300"
+                    />
+                    <Input
+                      type="text"
+                      value={editingTextProps.stroke}
+                      onChange={(e) => handleUpdateSelectedText('stroke', e.target.value)}
+                      className="flex-1 bg-white border-2 border-green-300 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-green-900 mb-2 block">Outline Width</label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="range"
+                      min="0"
+                      max="15"
+                      value={editingTextProps.strokeWidth}
+                      onChange={(e) => handleUpdateSelectedText('strokeWidth', Number(e.target.value))}
+                      className="flex-1 bg-white"
+                    />
+                    <span className="text-sm font-semibold text-green-900 w-12 text-right">
+                      {editingTextProps.strokeWidth}px
+                    </span>
+                  </div>
+                </div>
+
+                {/* Opacity */}
+                <div className="lg:col-span-3">
+                  <label className="text-sm font-semibold text-green-900 mb-2 block">Text Opacity</label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={editingTextProps.opacity}
+                      onChange={(e) => handleUpdateSelectedText('opacity', Number(e.target.value))}
+                      className="flex-1 bg-white"
+                    />
+                    <span className="text-sm font-semibold text-green-900 w-12 text-right">
+                      {Math.round(editingTextProps.opacity * 100)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-300 rounded-lg">
+                <p className="text-xs text-blue-800">
+                  <strong>💡 Tips:</strong> All changes apply instantly. Drag the text on canvas to reposition. Press ESC or click "Done Editing" to finish.
+                </p>
               </div>
             </div>
           </div>
@@ -651,10 +941,14 @@ function App() {
               {(processingState === 'processing' || isProcessing) && (
                 <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center gap-3">
-                      <Loader2
-                        className="w-5 h-5 text-blue-600 animate-spin origin-center flex-shrink-0"
-                        style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-                      />
+                      <div
+                        className="spinner-border flex-shrink-0"
+                        style={{
+                          width: '1.25rem',
+                          height: '1.25rem',
+                          borderWidth: '0.2rem'
+                        }}
+                      ></div>
                     <div>
                       <p className="text-sm font-semibold text-blue-800">
                         Processing your image...
@@ -920,7 +1214,11 @@ function App() {
                   </div>
                 )}
 
-                <Button onClick={handleAddText} className="w-full">
+                <Button
+                  onClick={handleAddText}
+                  className="w-full"
+                  disabled={processingState === 'processing' || isProcessing}
+                >
                   {processedImage ? 'Add Text Behind Subject' : 'Add Text to Canvas'}
                 </Button>
 

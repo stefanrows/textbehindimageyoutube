@@ -45,6 +45,7 @@ The project follows a standard Vite + React structure:
 - **Text Behind Subject Effect**: Advanced layering system that places text behind the main subject
 - **Smart Text Positioning**: Intelligent algorithm that automatically positions text to avoid subject overlap
 - **Text Visibility System**: Golden glow effects, auto-selection, and visual indicators ensure text is never lost
+- **Live Text Editing**: Real-time text property editor that appears when text is selected on canvas
 - **Real-time Canvas Manipulation**: Interactive drag-and-drop with Fabric.js
 - **Smart Layer Management**: Unified background+subject groups with independent text layers
 - **Enhanced UI Feedback**: Context-aware notifications, tips, and positioning guidance
@@ -54,7 +55,16 @@ The project follows a standard Vite + React structure:
 
 ## Recent Updates
 
-### Text Visibility Improvements (Latest)
+### Live Text Editor (Latest)
+- **Real-time Property Editing**: Click any text on canvas to open a live editor panel with instant property updates
+- **Comprehensive Controls**: Edit text content, font family, weight, size, fill color, stroke color/width, and opacity
+- **Smart Selection Detection**: Automatic event listeners on Fabric.js canvas detect text selection/deselection
+- **Keyboard Shortcuts**: Press ESC to close editor and deselect text
+- **Visual Feedback**: Green-bordered "LIVE EDIT MODE" panel with clear "Done Editing" button
+- **Undo/Redo Integration**: All text edits automatically save to history for undo/redo support
+- **Layer Name Updates**: Layer panel dynamically updates when text content changes
+
+### Text Visibility Improvements
 - **Smart Text Positioning**: Automatically calculates optimal text placement to avoid subject overlap using weighted safe zones
 - **Visual Indicators**: Newly added text gets a golden glow effect for 3 seconds using Fabric.js Shadow system
 - **Auto-Selection**: Text is automatically selected after being added, showing selection handles for immediate visibility
@@ -77,6 +87,9 @@ The project follows a standard Vite + React structure:
 - `processingState`: Tracks overall upload and processing flow ('idle' → 'uploading' → 'processing' → 'completed')
 - `isProcessing`: From background removal hook, tracks actual AI processing
 - `textAddedNotification`: Manages text addition feedback and user guidance
+- `selectedTextObject`: Currently selected text object for live editing
+- `editingTextContent`: Text content being edited in real-time
+- `editingTextProps`: Properties of selected text (font, colors, size, opacity)
 - Combined states ensure accurate loading feedback and text visibility
 
 ## ESLint Configuration

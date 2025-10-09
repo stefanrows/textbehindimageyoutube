@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Canvas, FabricImage, Textbox, Shadow, filters, Group } from 'fabric';
 
-const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onCanvasClick, showYouTubeFrame = true }, ref) => {
+const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onCanvasClick, showYouTubeFrame = true, isProcessing = false }, ref) => {
   const canvasRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   // Simplified interaction - no complex mode switching needed
@@ -840,12 +840,12 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
     updateLastTextObject: (properties) => {
       const canvas = fabricCanvasRef.current;
       const objects = canvas.getObjects();
-      
+
       // Find the most recently added text object
       const textObjects = objects.filter(obj => obj.type === 'textbox');
       if (textObjects.length > 0) {
         const lastText = textObjects[textObjects.length - 1];
-        
+
         // Update properties
         Object.keys(properties).forEach(key => {
           if (properties[key] !== undefined) {
@@ -863,11 +863,46 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
             }
           }
         });
-        
+
         canvas.requestRenderAll();
         return lastText;
       }
       return null;
+    },
+
+    updateTextObject: (textObject, properties) => {
+      const canvas = fabricCanvasRef.current;
+      if (!canvas || !textObject || textObject.type !== 'textbox') return false;
+
+      // Update properties
+      Object.keys(properties).forEach(key => {
+        if (properties[key] !== undefined) {
+          if (key === 'text') {
+            // Update text content
+            textObject.set('text', properties[key]);
+          } else if (key === 'shadow' && properties[key]) {
+            textObject.set('shadow', new Shadow({
+              color: properties[key].color,
+              blur: properties[key].blur,
+              offsetX: properties[key].offsetX,
+              offsetY: properties[key].offsetY,
+            }));
+          } else if (key === 'shadow' && !properties[key]) {
+            textObject.set('shadow', null);
+          } else {
+            textObject.set(key, properties[key]);
+          }
+        }
+      });
+
+      // Update layer name if text content changed
+      if (properties.text !== undefined) {
+        const newText = properties.text || 'Empty';
+        textObject.name = `📝 Text: ${newText.substring(0, 15)}${newText.length > 15 ? '...' : ''}`;
+      }
+
+      canvas.requestRenderAll();
+      return true;
     },
 
     calculateOptimalTextSize: (baseSize, autoScale = true) => {
@@ -1223,18 +1258,18 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
     syncAllOverlays: () => {
       const canvas = fabricCanvasRef.current;
       if (!canvas) return;
-      
+
       const objects = canvas.getObjects();
       const imageGroups = objects.filter(obj => obj.layerRole === 'imageGroup');
-      
+
       // Syncing all overlays
-      
+
       imageGroups.forEach(group => {
         if (group._overlayPartner && !group._syncing) {
           group._syncing = true;
-          
+
           // Force syncing overlay for group
-          
+
           // IMMEDIATE property assignment
           group._overlayPartner.left = group.left;
           group._overlayPartner.top = group.top;
@@ -1245,10 +1280,10 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
           group._overlayPartner.skewY = group.skewY || 0;
           group._overlayPartner.flipX = group.flipX || false;
           group._overlayPartner.flipY = group.flipY || false;
-          
+
           // Force coordinate update
           group._overlayPartner.setCoords();
-          
+
           // Maintain layer order with safety checks
           if (canvas.sendToBack && canvas.bringForward && canvas.bringToFront) {
             canvas.sendToBack(group);
@@ -1258,11 +1293,31 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
           } else {
             // Canvas layering methods not available in syncAllOverlays
           }
-          
+
           group._syncing = false;
         }
       });
-      
+
+      canvas.requestRenderAll();
+    },
+
+    setCanvasInteractive: (enabled) => {
+      const canvas = fabricCanvasRef.current;
+      if (!canvas) return;
+
+      // Disable/enable selection on the canvas itself
+      canvas.selection = enabled;
+
+      // Disable/enable all objects on the canvas
+      const objects = canvas.getObjects();
+      objects.forEach(obj => {
+        if (obj.layerRole === 'imageGroup' || obj.layerRole === 'text') {
+          // Only affect interactive objects
+          obj.selectable = enabled;
+          obj.evented = enabled;
+        }
+      });
+
       canvas.requestRenderAll();
     },
   }));
@@ -1272,7 +1327,7 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
       <div className="canvas-wrapper">
         <canvas ref={canvasRef} />
         {showYouTubeFrame && (
-          <div 
+          <div
             className="youtube-frame-overlay"
             style={{
               left: `${(frameLeft / width) * 100}%`,
@@ -1286,10 +1341,29 @@ const FabricCanvas = forwardRef(({ width = 800, height = 600, onCanvasReady, onC
             <div className="absolute -top-1 -right-1 w-4 h-4 border-r-2 border-t-2 border-red-500 bg-white"></div>
             <div className="absolute -bottom-1 -left-1 w-4 h-4 border-l-2 border-b-2 border-red-500 bg-white"></div>
             <div className="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-red-500 bg-white"></div>
-            
+
             {/* YouTube label */}
             <div className="absolute -top-6 left-0 bg-red-500 text-white text-xs px-2 py-1 rounded-t font-medium whitespace-nowrap">
               YouTube Thumbnail (16:9)
+            </div>
+          </div>
+        )}
+        {/* Processing overlay */}
+        {isProcessing && (
+          <div
+            className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 rounded"
+            style={{
+              pointerEvents: 'all',
+              cursor: 'not-allowed'
+            }}
+          >
+            <div className="flex flex-col items-center gap-4 bg-white rounded-lg p-8 shadow-2xl">
+              <div className="spinner-border"></div>
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Processing Image...</h3>
+                <p className="text-sm text-gray-600">Removing background for text-behind effect</p>
+                <p className="text-xs text-gray-500 mt-2">Please wait, this may take a moment</p>
+              </div>
             </div>
           </div>
         )}
